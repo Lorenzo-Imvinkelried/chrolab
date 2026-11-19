@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChordLab — Estudio de Acordes y Secuencias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/controls.css">
+    <link rel="stylesheet" href="css/piano-roll.css">
+</head>
+<body class="min-h-screen flex flex-col bg-[#090d16] text-slate-100 overflow-x-hidden">
+
+    <!-- TOP HEADER: TRANSPORT & ELECTRIC PIANO SYNTH CONTROLS -->
+    <header class="sticky top-0 z-30 bg-[#0f1523]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 shadow-lg">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Brand & Audio Status -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 flex items-center justify-center shadow-md shadow-cyan-500/20 border border-cyan-400/30">
+                    <i class="fa-solid fa-wave-square text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-cyan-200 to-indigo-300 bg-clip-text text-transparent">
+                            ChordLab Studio
+                        </h1>
+                        <span id="synthPatchBadge" class="text-[10px] font-mono-code uppercase px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                            Cristal + Pluck Estéreo
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Acordes, Préstamos Modales, Secuencias EDM/Ninajirachi y Editor Libre</p>
+                </div>
+            </div>
+
+            <!-- Transport & Tempo Controls -->
+            <div class="flex items-center gap-2 bg-[#151d30] p-1.5 rounded-xl border border-slate-700/70 shadow-inner">
+                <button id="btnPlay" onclick="togglePlay()" class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-md shadow-emerald-500/20 active:scale-95" title="Reproducir / Pausar (Barra Espaciadora)">
+                    <i id="playIcon" class="fa-solid fa-play"></i>
+                    <span id="playText">Reproducir</span>
+                </button>
+                <button onclick="stopPlayback()" class="p-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs sm:text-sm" title="Detener y volver al inicio">
+                    <i class="fa-solid fa-stop"></i>
+                </button>
+                <button id="btnLoop" onclick="toggleLoop()" class="p-2 px-2.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition text-xs sm:text-sm" title="Repetir secuencia en bucle">
+                    <i class="fa-solid fa-repeat"></i>
+                </button>
+
+                <div class="h-6 w-[1px] bg-slate-700 mx-1"></div>
+
+                <!-- BPM Control -->
+                <div class="flex items-center gap-2 px-2">
+                    <div class="text-right">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 block leading-none">Tempo</span>
+                        <span id="bpmValue" class="font-mono-code font-bold text-sm text-cyan-300">118</span>
+                        <span class="text-[10px] text-slate-400">BPM</span>
+                    </div>
+                    <input id="bpmSlider" type="range" min="50" max="170" value="118" class="w-20 sm:w-24" oninput="updateBPM(this.value)">
+                </div>
+
+                <!-- Visual Beat LED Indicator -->
+                <div class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-800" title="Indicador de Pulso">
+                    <div id="beatDot0" class="w-2.5 h-2.5 rounded-full bg-slate-700 transition-all duration-75"></div>
+                    <div id="beatDot1" class="w-2.5 h-2.5 rounded-full bg-slate-700 transition-all duration-75"></div>
+                    <div id="beatDot2" class="w-2.5 h-2.5 rounded-full bg-slate-700 transition-all duration-75"></div>
+                    <div id="beatDot3" class="w-2.5 h-2.5 rounded-full bg-slate-700 transition-all duration-75"></div>
+                </div>
+            </div>
+
+            <!-- Studio EDM Synth Engine Selector & Knobs -->
+            <div class="flex flex-wrap items-center gap-3 bg-[#151d30] px-3 py-1.5 rounded-xl border border-slate-700/70">
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-sliders text-amber-300 text-xs"></i>
+                    <select id="synthPatchSelect" onchange="selectSynthPatch(this.value)" class="bg-[#0e1525] border border-cyan-500/40 hover:border-cyan-400 rounded-lg px-2.5 py-1 text-xs font-bold text-cyan-200 outline-none transition cursor-pointer" title="Seleccionar motor de sonido profesional">
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+
+                <div class="flex flex-col w-16 sm:w-20">
+                    <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Volumen</span>
+                        <span id="lblVol" class="font-mono-code text-slate-200">85%</span>
+                    </div>
+                    <input id="sliderVol" type="range" min="10" max="100" value="85" oninput="updateSynthParam('volume', this.value)">
+                </div>
+
+                <div class="flex flex-col w-16 sm:w-20" title="Apertura de Filtro / Brillo del Sintetizador">
+                    <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Filtro/Brillo</span>
+                        <span id="lblBell" class="font-mono-code text-amber-300">72%</span>
+                    </div>
+                    <input id="sliderBell" type="range" min="0" max="100" value="72" oninput="updateSynthParam('bell', this.value)">
+                </div>
+
+                <div class="flex flex-col w-16 sm:w-20" title="Ancho Estéreo Unison (Detune) y Movimiento">
+                    <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Unison/Ancho</span>
+                        <span id="lblTremolo" class="font-mono-code text-cyan-300">35%</span>
+                    </div>
+                    <input id="sliderTremolo" type="range" min="0" max="100" value="35" oninput="updateSynthParam('tremolo', this.value)">
+                </div>
+
+                <div class="flex flex-col w-16 sm:w-20" title="Duración de la cola del sonido (Release)">
+                    <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Sustain</span>
+                        <span id="lblRelease" class="font-mono-code text-indigo-300">1.6s</span>
+                    </div>
+                    <input id="sliderRelease" type="range" min="3" max="35" value="16" oninput="updateSynthParam('release', this.value)">
+                </div>
+
+                <div class="flex flex-col w-16 sm:w-20" title="Rasgueo humanizado al tocar acordes (Strum)">
+                    <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Rasgueo</span>
+                        <span id="lblStrum" class="font-mono-code text-emerald-300">22ms</span>
+                    </div>
+                    <input id="sliderStrum" type="range" min="0" max="90" value="22" oninput="updateSynthParam('strum', this.value)">
+                </div>
+
+                <div class="flex flex-col w-20 sm:w-24" title="Reverb Hall Estéreo de Estudio + Delay Ping-Pong">
+                    <div class="flex justify-between text-[10px] text-fuchsia-300 font-semibold mb-0.5">
+                        <span>✨ Reverb Hall</span>
+                        <span id="lblCrystal" class="font-mono-code text-fuchsia-300">75%</span>
+                    </div>
+                    <input id="sliderCrystal" type="range" min="0" max="100" value="75" oninput="updateSynthParam('crystal', this.value)">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 flex flex-col gap-4">
+
+        <!-- SECTION 1: SCALE SELECTOR & DIATONIC + BORROWED CHORD PALETTE -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Left Panel: Scale & Root Controls + Instant Progressions (5 cols) -->
+            <div class="lg:col-span-5 bg-[#111827] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-xl">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                            <i class="fa-solid fa-compass"></i> 1. Tónica, Escala y Color
+                        </h2>
+                        <span id="scaleNotesBadge" class="text-[11px] font-mono-code px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                            C D E F G A B
+                        </span>
+                    </div>
+
+                    <!-- Root Note Grid (12 Semitones) -->
+                    <label class="text-xs text-slate-400 block mb-1.5">Nota Raíz (Tónica del Proyecto):</label>
+                    <div id="rootNoteGrid" class="grid grid-cols-6 gap-1.5 mb-3">
+                        <!-- Generated via JS -->
+                    </div>
+
+                    <!-- Scale Selector & Extension Selector -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2">
+                        <div>
+                            <label for="scaleSelect" class="text-xs text-slate-400 block mb-1">Escala Base:</label>
+                            <select id="scaleSelect" onchange="onScaleConfigChange()" class="w-full bg-[#1a2438] border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-white outline-none transition">
+                                <!-- Populated via JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="extensionSelect" class="text-xs text-slate-400 block mb-1">Complejidad Diatónica:</label>
+                            <select id="extensionSelect" onchange="onScaleConfigChange()" class="w-full bg-[#1a2438] border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-white outline-none transition">
+                                <option value="triad">Tríadas (3 notas - Simple)</option>
+                                <option value="7th">Séptimas (4 notas - Rico/Jazz)</option>
+                                <option value="9th" selected>Novenas Lush (5 notas - EDM/Soul)</option>
+                                <option value="add9">Add9 Cristalino (1-3-5-9)</option>
+                                <option value="sus2">Suspendidos Sus2 (Abierto/Etéreo)</option>
+                                <option value="sus4">Suspendidos Sus4 (Tensión)</option>
+                                <option value="power">Quintas / Power Chords</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SMART INFINITE PROGRESSION GENERATOR (HUMANIZED & SHARED SCALES) -->
+                <div class="bg-[#151e32] border border-cyan-500/30 rounded-xl p-3 flex flex-col gap-2.5 shadow-inner">
+                    <div class="flex flex-wrap items-center justify-between gap-1.5">
+                        <span class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles text-fuchsia-400"></i> Generador Inteligente Infinito (Humanizado)
+                        </span>
+                        <span id="genSharedScalesBadge" class="text-[10px] font-mono-code px-2 py-0.5 rounded-full bg-fuchsia-500/20 text-fuchsia-200 border border-fuchsia-500/40">
+                            Markov + Voice Leading
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="genLengthSelect" class="text-[11px] text-slate-400 block mb-0.5">Cantidad en la Progresión:</label>
+                            <select id="genLengthSelect" class="w-full bg-[#0f1626] border border-slate-700 focus:border-cyan-400 rounded-lg px-2 py-1.5 text-xs font-medium text-white outline-none">
+                                <option value="2">2 Acordes (Pendular)</option>
+                                <option value="4" selected>4 Acordes (Estándar)</option>
+                                <option value="6">6 Acordes (Narrativo)</option>
+                                <option value="8">8 Acordes (Viaje Completo)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="genSharedScaleSelect" class="text-[11px] text-slate-400 block mb-0.5">Escalas Compartidas (Préstamos):</label>
+                            <select id="genSharedScaleSelect" class="w-full bg-[#0f1626] border border-slate-700 focus:border-fuchsia-400 rounded-lg px-2 py-1.5 text-xs font-medium text-white outline-none">
+                                <option value="none">Ninguna (100% Escala Actual)</option>
+                                <option value="subtle">Sutil (1 Préstamo Emotivo)</option>
+                                <option value="balanced" selected>Equilibrado (Eólica / Dórica / Lidia)</option>
+                                <option value="adventurous">Exploración (Multi-Escala + Dom. Sec.)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="genStyleSelect" class="text-[11px] text-slate-400 block mb-0.5">Estilo Humano y Voicing:</label>
+                            <select id="genStyleSelect" class="w-full bg-[#0f1626] border border-slate-700 focus:border-cyan-400 rounded-lg px-2 py-1.5 text-xs font-medium text-white outline-none">
+                                <option value="lush_voice_leading" selected>Lush 9nas + Enlace Suave</option>
+                                <option value="pedal_crystal">Pedal Agudo (Ninajirachi / Porter)</option>
+                                <option value="cinematic_slash">Bajo Melódico (Slash Chords)</option>
+                                <option value="neosoul_close">Voces Cercanas (Neo-Soul / Rhodes)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="genRhythmSelect" class="text-[11px] text-slate-400 block mb-0.5">Ritmo Armónico:</label>
+                            <select id="genRhythmSelect" class="w-full bg-[#0f1626] border border-slate-700 focus:border-cyan-400 rounded-lg px-2 py-1.5 text-xs font-medium text-white outline-none">
+                                <option value="even" selected>4 Tiempos por Acorde</option>
+                                <option value="passing">Dinámico (Con Acordes de Paso 2t)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="triggerSmartProgressionGenerator()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 hover:from-cyan-400 hover:via-blue-400 hover:to-fuchsia-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-cyan-500/20 active:scale-[0.99] transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-dice-magic"></i>
+                        <span>✨ Mezclar y Crear Progresión Inteligente (1 Clic)</span>
+                    </button>
+                </div>
+
+                <!-- Quick Progression Generator (EDM, Ninajirachi & Scale-Breakers) -->
+                <div class="border-t border-slate-800/90 pt-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-fuchsia-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt"></i> Presets Fijos de Referencia:
+                        </span>
+                        <span class="text-[10px] text-slate-400">Con préstamos y 9nas</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[155px] overflow-y-auto pr-1" id="presetButtonsContainer">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Generated Scale Chords + Out-Of-Scale Borrowed Chords (7 cols) -->
+            <div class="lg:col-span-7 bg-[#111827] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xl gap-3">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                        <div>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group"></i> 2. Acordes de la Escala (Diatónicos)
+                            </h2>
+                            <p class="text-xs text-slate-400">
+                                Haz clic para escuchar o pulsa <span class="text-cyan-300 font-semibold">+ Añadir</span> (Teclas <kbd class="px-1 bg-slate-800 rounded text-slate-200">1</kbd>-<kbd class="px-1 bg-slate-800 rounded text-slate-200">7</kbd>).
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-slate-400 flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                                <span>Octava:</span>
+                                <select id="baseOctaveSelect" onchange="onScaleConfigChange()" class="bg-transparent text-cyan-300 font-mono-code font-bold outline-none cursor-pointer">
+                                    <option value="3">4 (Cálida)</option>
+                                    <option value="4" selected>5 (Estándar FL)</option>
+                                    <option value="5">6 (Cristal)</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Diatonic Chords Grid -->
+                    <div id="paletteGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+                <!-- OUT OF SCALE / BORROWED CHORDS ("SPICE & MODAL INTERCHANGE") -->
+                <div class="pt-3 border-t border-slate-800/90">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-fuchsia-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-wand-sparkles"></i> Acordes Fuera de la Escala (Préstamos Modales / Spice)
+                            </span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30">
+                                Rompen la escala rígida
+                            </span>
+                        </div>
+                        <span class="text-[11px] text-slate-400">Úsalos para dar emoción inesperada estilo EDM / Porter / Ninajirachi</span>
+                    </div>
+
+                    <div id="borrowedPaletteGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: CHORD PROGRESSION SEQUENCER & SCALE-BREAKING TRICKS -->
+        <section class="bg-[#111827] border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                        <i class="fa-solid fa-timeline"></i> 3. Tu Secuencia de Acordes
+                    </h2>
+                    <span id="sequenceCountBadge" class="text-xs font-mono-code px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                        4 acordes
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="exportProgressionMIDI()" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/40 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Descargar archivo MIDI (.mid) para arrastrar directo a FL Studio">
+                        <i class="fa-solid fa-download"></i> Descargar MIDI (FL Studio)
+                    </button>
+                    <button onclick="copyProgressionText()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-copy"></i> Copiar Cifrado
+                    </button>
+                    <button onclick="clearSequence()" class="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-trash-can"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+
+            <!-- 1-CLICK HARMONIC PRODUCER TRICKS BAR -->
+            <div class="bg-[#161f33] border border-slate-700/80 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-amber-300">
+                    <i class="fa-solid fa-fire-flame-curved"></i>
+                    <span>Trucos para Romper la Escala:</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="applyPedalToneToSequence()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-semibold transition flex items-center gap-1.5" title="Fija la Tónica y 5ta agudas arriba en TODOS los acordes. Une acordes raros o fuera de escala con un brillo cristalino estilo Ninajirachi">
+                        <i class="fa-solid fa-thumbtack text-amber-300"></i> Clavar Nota Pedal Aguda (Toda la Secuencia)
+                    </button>
+                    <button onclick="applyLushClusterToSequence()" class="px-3 py-1.5 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-200 border border-fuchsia-500/40 text-xs font-semibold transition flex items-center gap-1.5" title="Abre el bajo y añade intervalos de 2da/9na pegados arriba para quitar el sonido rígido de escuela">
+                        <i class="fa-solid fa-wand-magic-sparkles text-fuchsia-300"></i> Voicing Lush / Add9 (Toda la Secuencia)
+                    </button>
+                    <button onclick="humanizeSequenceVoicings()" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 text-xs font-semibold transition flex items-center gap-1.5" title="Enlaza las voces de los acordes para que no den saltos bruscos (Voice Leading)">
+                        <i class="fa-solid fa-magnet text-indigo-300"></i> Suavizar Enlaces (Voice Leading)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progression Cards Container -->
+            <div id="sequenceTimeline" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 min-h-[140px]">
+                <!-- Populated via JS -->
+            </div>
+        </section>
+
+        <!-- SECTION 3: INTERACTIVE NOTE EDITOR (PIANO ROLL & VOICING TRANSFORMER) -->
+        <section class="bg-[#111827] border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+            
+            <!-- Editor Header & Quick Voicing Actions -->
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-300">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-amber-400">
+                                4. Editor Libre de Notas (Acorde Seleccionado)
+                            </h2>
+                            <span id="editingChordBadge" class="px-2.5 py-0.5 rounded-md font-mono-code font-bold text-xs bg-amber-500/20 text-amber-200 border border-amber-400/40">
+                                Paso #1: Cmaj7
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            <strong class="text-slate-200">Arrastra las barras de notas arriba/abajo</strong> para moverlas de tono, o <strong class="text-slate-200">haz clic en cualquier fila</strong> para agregar o quitar notas.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Quick Voicing Transformation Buttons -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button onclick="transformSelectedChord('lushCluster')" class="px-2.5 py-1.5 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-xs font-semibold text-fuchsia-200 border border-fuchsia-500/40 transition flex items-center gap-1" title="Agrega un roce de 2da/9na y abre el acorde para que suene moderno y emotivo">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> +9na Lush
+                    </button>
+                    <button onclick="transformSelectedChord('slashBass')" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-xs font-semibold text-cyan-200 border border-cyan-500/40 transition flex items-center gap-1" title="Pone la 3ra del acorde en el bajo profundo (Acorde Invertido / Slash Chord)">
+                        <i class="fa-solid fa-water"></i> Bajo en 3ra
+                    </button>
+                    <button onclick="transformSelectedChord('modalFlip')" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-xs font-semibold text-amber-200 border border-amber-500/40 transition flex items-center gap-1" title="Intercambio Modal: Convierte un acorde Mayor en Menor (o viceversa) saliendo de la escala">
+                        <i class="fa-solid fa-masks-theater"></i> Mayor ↔ Menor
+                    </button>
+                    <button onclick="transformSelectedChord('invUp')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center gap-1" title="Sube la nota más grave una octava">
+                        <i class="fa-solid fa-arrow-turn-up text-cyan-400"></i> Invertir ↑
+                    </button>
+                    <button onclick="transformSelectedChord('invDown')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center gap-1" title="Baja la nota más aguda una octava">
+                        <i class="fa-solid fa-arrow-turn-down text-cyan-400"></i> Invertir ↓
+                    </button>
+                    <button onclick="transformSelectedChord('drop2')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center gap-1" title="Abre el acorde bajando la segunda voz una octava (Drop 2)">
+                        <i class="fa-solid fa-arrows-up-down text-amber-400"></i> Drop 2
+                    </button>
+                    <button onclick="transformSelectedChord('addBass')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center gap-1" title="Añade una nota de bajo profunda una octava abajo">
+                        <i class="fa-solid fa-drum text-emerald-400"></i> + Bajo
+                    </button>
+                    <button onclick="transformSelectedChord('semiUp')" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono-code text-slate-200 border border-slate-700 transition" title="Subir todo el acorde 1 semitono">
+                        +1st
+                    </button>
+                    <button onclick="transformSelectedChord('semiDown')" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono-code text-slate-200 border border-slate-700 transition" title="Bajar todo el acorde 1 semitono">
+                        -1st
+                    </button>
+                    <button onclick="transformSelectedChord('reset')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-xs text-slate-400 hover:text-white border border-slate-700/60 transition" title="Restaurar las notas originales del acorde">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Workspace: Left Individual Note Controls + Right Interactive Piano Roll -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                
+                <!-- Left Column: Individual Note Movers & Chord Inspector (4 cols) -->
+                <div class="lg:col-span-4 bg-[#0b101b] border border-slate-800/90 rounded-xl p-3.5 flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                            Notas Activas del Acorde
+                        </span>
+                        <button onclick="previewSelectedChord()" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-semibold border border-cyan-500/30 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-volume-high"></i> Escuchar Acorde
+                        </button>
+                    </div>
+
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        Mueve cada voz individualmente por semitonos u octavas, o escribe/agrega cualquier nota nueva:
+                    </p>
+
+                    <!-- Individual Note Chips List -->
+                    <div id="activeNotesList" class="flex flex-col gap-2 max-h-[260px] overflow-y-auto pr-1">
+                        <!-- Populated via JS -->
+                    </div>
+
+                    <!-- Manual Add Note Selector -->
+                    <div class="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                        <select id="manualAddNoteSelect" class="flex-1 bg-[#161f33] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono-code text-white outline-none">
+                            <!-- Populated via JS -->
+                        </select>
+                        <button onclick="addManualNoteToSelectedChord()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Agregar Nota
+                        </button>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-1.5 text-[10px] text-slate-400">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded bg-cyan-500 inline-block shrink-0"></span>
+                            <span>En la escala</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded bg-fuchsia-500 inline-block shrink-0"></span>
+                            <span>Fuera / Préstamo</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded bg-amber-400 inline-block shrink-0"></span>
+                            <span>Nota Pedal Aguda</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Interactive Visual Piano Roll (8 cols) -->
+                <div class="lg:col-span-8 bg-[#0b101b] border border-slate-800/90 rounded-xl overflow-hidden flex flex-col">
+                    <div class="bg-[#141c2e] px-3.5 py-2 border-b border-slate-800 flex items-center justify-between text-xs">
+                        <span class="font-semibold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-grip-lines text-cyan-400"></i> Piano Roll Interactivo (C3 – B6 · Octavas FL Studio)
+                        </span>
+                        <span class="text-[11px] text-slate-400">
+                            Filas iluminadas = Notas de la escala actual
+                        </span>
+                    </div>
+
+                    <!-- Scrollable Piano Roll Container -->
+                    <div id="pianoRollScrollContainer" class="h-[340px] overflow-y-auto relative select-none">
+                        <div id="pianoRollGrid" class="flex flex-col">
+                            <!-- Rows generated via JS from B5 (MIDI 83) down to C2 (MIDI 36) -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- TOAST NOTIFICATION MESSAGE BOX -->
+    <div id="toastMessage" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-300 bg-slate-900/95 border border-cyan-500/50 text-cyan-200 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-medium">
+        <i class="fa-solid fa-circle-check text-cyan-400 text-sm"></i>
+        <span id="toastText">Listo</span>
+    </div>
+
+    <!-- MÓDULOS DE DATOS Y CATÁLOGOS -->
+    <script src="js/data/notes.js"></script>
+    <script src="js/data/scales.js"></script>
+    <script src="js/data/presets.js"></script>
+    <script src="js/data/chord-templates.js"></script>
+    <script src="js/data/harmonic-rules.js"></script>
+    <script src="js/data/synth-presets.js"></script>
+
+    <!-- ESTADO DE LA APLICACIÓN -->
+    <script src="js/state/store.js"></script>
+
+    <!-- MOTOR ARMÓNICO -->
+    <script src="js/harmony/midi-utils.js"></script>
+    <script src="js/harmony/chord-analyzer.js"></script>
+    <script src="js/harmony/chord-builder.js"></script>
+    <script src="js/harmony/voicing-transforms.js"></script>
+    <script src="js/harmony/smart-generator.js"></script>
+
+    <!-- MOTOR DE AUDIO WEB AUDIO API -->
+    <script src="js/audio/audio-context.js"></script>
+    <script src="js/audio/ep-synth.js"></script>
+
+    <!-- SECUENCIADOR Y TRANSPORTE -->
+    <script src="js/sequencer/transport.js"></script>
+    <script src="js/sequencer/sequence-actions.js"></script>
+
+    <!-- EXPORTACIÓN -->
+    <script src="js/export/midi-exporter.js"></script>
+    <script src="js/export/text-exporter.js"></script>
+
+    <!-- INTERFAZ DE USUARIO (UI) -->
+    <script src="js/ui/toast.js"></script>
+    <script src="js/ui/transport-ui.js"></script>
+    <script src="js/ui/palette-ui.js"></script>
+    <script src="js/ui/timeline-ui.js"></script>
+    <script src="js/ui/piano-roll-ui.js"></script>
+    <script src="js/ui/editor-ui.js"></script>
+    <script src="js/ui/generator-ui.js"></script>
+    <script src="js/ui/shortcuts.js"></script>
+
+    <!-- INICIALIZACIÓN -->
+    <script src="js/main.js"></script>
+</body>
+</html>
