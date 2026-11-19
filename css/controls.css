@@ -1,0 +1,31 @@
+/* Custom Range Input */
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    background: #1e293b;
+    height: 6px;
+    border-radius: 999px;
+    border: 1px solid #334155;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -5px;
+    background-color: #38bdf8;
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+    transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background-color: #7dd3fc;
+}
